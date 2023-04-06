@@ -1,0 +1,91 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const mysql = require('mysql');
+const json = require('body-parser/lib/types/json');
+
+const connection = mysql.createConnection({
+  host: 'localhost',
+  user: 'root',
+  password: '',
+  database: 'student'
+});
+
+connection.connect((error) => {
+    if (error) {
+      console.error('Error connecting to MySQL database: ', error);
+    } else {
+      console.log('Connected to MySQL database!');
+    }
+  });
+  
+  module.exports = connection;
+
+const app = express();
+app.use(bodyParser.json());
+
+app.get('/', (req, res) => {
+  res.send('Welcome to my API!');
+});
+
+app.listen(3000, () => {
+  console.log('Server listening on port 3000');
+});
+
+app.get('/student', (req, res) => {
+    connection.query('SELECT * FROM students', (error, results) => {
+        if (error) {
+            console.error('No Student found!', error)
+            res.status(500).json({error: 'No Student found'});
+        } else {
+            res.json(results);
+        }
+    });
+});
+
+app.get('/student/:id', (req, res) => {
+     const id = req.params.id;
+     const student = "SELECT * FROM students WHERE id = ?";
+     connection.query(student, [id],function(error, results) {
+        if(error) throw error;
+        if (results.length > 0) {
+            res.json(results);
+        } else {
+            res.json("NO RECORD FOR ID " + id);
+        }
+});
+});
+
+app.post('/student', (req, res) => {
+    const {Name, Major, Profile_Picture} = req.body;
+    if (!Name || !Major) {
+        res.status(400).json({error:"INVALID"});
+        return;
+    }
+    connection.query('INSERT INTO students SET ?', {Name, Major,Profile_Picture}, (error, results) => {
+        if (error) {
+            console.error('INVALID DATA:', error);
+            res.status(500).json({error: 'INVALID'});
+        } else {
+            res.json({id: results.insertId});
+        }
+    });
+});
+
+app.put('/student/:id', (req, res) => {
+    const id = req.params.id;
+    const update = req.body;
+    const sql = "UPDATE students SET ? WHERE id = ?";
+    connection.query(sql, [update, id], function(error, results) {
+        if (error) throw error;
+        res.json({message: "UPDATED"});
+    });
+});
+
+app.delete('/student/:id', (req, res) => {
+    const id = req.params.id;
+    const sql = "DELETE FROM students WHERE id = ?";
+    connection.query(sql, [id], function (error, results) {
+        if(error) throw error;
+        res.json({message:"DELETED"});
+        });
+  });
